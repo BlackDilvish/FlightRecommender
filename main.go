@@ -5,88 +5,125 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
+
+	"github.com/gorilla/mux"
+	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
-
-type Page struct {
-	Title string
-	Body  []byte
-}
-
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return os.WriteFile(filename, p.Body, 0600)
-}
-
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Page{Title: title, Body: body}, nil
-}
-
-func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
-		return
-	}
-	renderTemplate(w, "view", p)
-}
-
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		p = &Page{Title: title}
-	}
-	renderTemplate(w, "edit", p)
-}
-
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
-	err := p.save()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
-}
 
 var templates = template.Must(template.ParseFiles("templates/edit.html",
 	"templates/view.html",
 	"templates/header.html"))
 
-func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := templates.ExecuteTemplate(w, tmpl+".html", p)
+func readData(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, map[string]string) (neo4j.Result, error)) {
+	var records []Airport
+
+	vars := mux.Vars(r)
+
+	session := driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+	_, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+
+		result, err := fn(tx, vars)
+
+		if err != nil {
+			return nil, err
+		}
+		for result.Next() {
+			records = append(records, Airport{
+				Name: result.Record().Values[0].(string),
+			})
+		}
+		return nil, result.Err()
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	err = templates.ExecuteTemplate(w, "view.html", records)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
+func getAirport(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
+	key := vars["name"]
 
-func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		m := validPath.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.NotFound(w, r)
-			return
-		}
-		fn(w, r, m[2])
-	}
+	cypher := `MATCH (a:Airport)
+			WHERE a.name = $airport_name
+			RETURN a.name AS name`
+
+	return tx.Run(cypher, map[string]interface{}{
+		"airport_name": key,
+	})
 }
 
-func main() {
-	http.HandleFunc("/view/", makeHandler(viewHandler))
-	http.HandleFunc("/edit/", makeHandler(editHandler))
-	http.HandleFunc("/save/", makeHandler(saveHandler))
+func getAirports(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
+
+	cypher := `MATCH (a:Airport)
+			   RETURN a.name AS name`
+
+	return tx.Run(cypher, map[string]interface{}{})
+}
+
+func getConnectedAirports(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
+	key := vars["name"]
+
+	cypher := `MATCH (a:Airport)-[r:HAS_CONNECTION]->(b:Airport)
+				WHERE a.name = $airport_name
+				RETURN b.name`
+
+	return tx.Run(cypher, map[string]interface{}{
+		"airport_name": key,
+	})
+}
+
+func getPath(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
+	dept := vars["dept"]
+	dest := vars["dest"]
+
+	cypher := `MATCH (a:Airport),
+					(b:Airport),
+					p = shortestPath((a)-[HAS_CONNECTION*]->(b))
+				Where a.name = $dept and b.name = $dest and length(p) > 0
+				UNWIND [n in nodes(p) | n.name] as name
+				RETURN name`
+
+	return tx.Run(cypher, map[string]interface{}{
+		"dept": dept,
+		"dest": dest,
+	})
+}
+
+func handleRequests(driver neo4j.Driver) {
+	myRouter := mux.NewRouter().StrictSlash(true)
+
+	myRouter.HandleFunc("/airports", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getAirports) })
+	myRouter.HandleFunc("/airport/{name}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getAirport) })
+	myRouter.HandleFunc("/connections/{name}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getConnectedAirports) })
+	myRouter.HandleFunc("/path/{dept}/{dest}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getPath) })
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, myRouter))
+}
+
+func main() {
+
+	uri := "neo4j+s://5ac579fa.databases.neo4j.io"
+	pass := os.Getenv("FLIGHT_PASS")
+	auth := neo4j.BasicAuth("neo4j", pass, "")
+
+	driver, err := neo4j.NewDriver(uri, auth)
+	if err != nil {
+		panic(err)
+	}
+	defer driver.Close()
+
+	handleRequests(driver)
+}
+
+type Airport struct {
+	Name string
 }
