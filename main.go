@@ -15,12 +15,27 @@ import (
 
 var templates = template.Must(template.ParseFiles("templates/airport_form.html",
 	"templates/view.html",
-	"templates/header.html"))
+	"templates/header.html",
+	"templates/path_form.html",
+	"templates/connection_form.html"))
 
-func readData(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, map[string]string) (neo4j.Result, error)) {
+func readHandler(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, map[string]string) (neo4j.Result, error)) {
+	records := readData(r, driver, fn)
+
+	err := templates.ExecuteTemplate(w, "view.html", records)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func readData(r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, map[string]string) (neo4j.Result, error)) []Airport {
 	var records []Airport
 
 	vars := mux.Vars(r)
+	if len(vars) == 0 {
+		bytes, _ := ioutil.ReadAll(r.Body)
+		vars = parseRequestBody(string(bytes))
+	}
 
 	session := driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
@@ -42,10 +57,7 @@ func readData(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn fu
 		panic(err)
 	}
 
-	err = templates.ExecuteTemplate(w, "view.html", records)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	return records
 }
 
 func getAirport(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
@@ -81,8 +93,8 @@ func getConnectedAirports(tx neo4j.Transaction, vars map[string]string) (neo4j.R
 }
 
 func getPath(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
-	dept := vars["dept"]
-	dest := vars["dest"]
+	dept := vars["departure"]
+	dest := vars["destination"]
 
 	cypher := `MATCH (a:Airport),
                (b:Airport),
@@ -102,7 +114,7 @@ func saveData(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn fu
 	defer session.Close()
 	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		reqBody, _ := ioutil.ReadAll(r.Body)
-		result, err := createAirport(tx, reqBody)
+		result, err := fn(tx, reqBody)
 
 		if err != nil {
 			fmt.Println(err)
@@ -133,6 +145,22 @@ func createAirport(tx neo4j.Transaction, reqBody []byte) (neo4j.Result, error) {
 	})
 }
 
+func createConnection(tx neo4j.Transaction, reqBody []byte) (neo4j.Result, error) {
+	var connection Connection
+	args := parseRequestBody(string(reqBody))
+	connection.Departure = args["departure"]
+	connection.Destination = args["destination"]
+
+	cypher := `MATCH (a:Airport { name: $dept })
+	           MATCH (b:Airport { name: $dest })
+	           CREATE (a)-[rel:HAS_CONNECTION]->(b)`
+
+	return tx.Run(cypher, map[string]interface{}{
+		"dept": connection.Departure,
+		"dest": connection.Destination,
+	})
+}
+
 func airportFormHandler(w http.ResponseWriter, r *http.Request) {
 	err := templates.ExecuteTemplate(w, "airport_form.html", "test")
 	if err != nil {
@@ -140,8 +168,28 @@ func airportFormHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func pathFormHandler(w http.ResponseWriter, r *http.Request, driver neo4j.Driver) {
+	airports := readData(r, driver, getAirports)
+	err := templates.ExecuteTemplate(w, "path_form.html", airports)
+	if err != nil {
+		return
+	}
+}
+
+func connectionFormHandler(w http.ResponseWriter, r *http.Request, driver neo4j.Driver) {
+	airports := readData(r, driver, getAirports)
+	err := templates.ExecuteTemplate(w, "connection_form.html", airports)
+	if err != nil {
+		return
+	}
+}
+
 func parseRequestBody(body string) map[string]string {
 	m := make(map[string]string)
+	if body == "" {
+		return m
+	}
+
 	for _, obj := range strings.Split(body, "&") {
 		vars := strings.Split(obj, "=")
 		m[vars[0]] = vars[1]
@@ -153,13 +201,18 @@ func parseRequestBody(body string) map[string]string {
 func handleRequests(driver neo4j.Driver) {
 	myRouter := mux.NewRouter().StrictSlash(true)
 
-	myRouter.HandleFunc("/airports", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getAirports) })
-	myRouter.HandleFunc("/airport/{name}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getAirport) })
-	myRouter.HandleFunc("/connections/{name}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getConnectedAirports) })
-	myRouter.HandleFunc("/path/{dept}/{dest}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getPath) })
+	myRouter.HandleFunc("/airports", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getAirports) })
+	myRouter.HandleFunc("/airport/{name}", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getAirport) })
+	myRouter.HandleFunc("/connections/{name}", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getConnectedAirports) })
 
-	myRouter.HandleFunc("/create/airport", airportFormHandler)
+	myRouter.HandleFunc("/airport", airportFormHandler).Methods("GET")
 	myRouter.HandleFunc("/airport", func(w http.ResponseWriter, r *http.Request) { saveData(w, r, driver, createAirport) }).Methods("POST")
+
+	myRouter.HandleFunc("/connection", func(w http.ResponseWriter, r *http.Request) { connectionFormHandler(w, r, driver) }).Methods("GET")
+	myRouter.HandleFunc("/connection", func(w http.ResponseWriter, r *http.Request) { saveData(w, r, driver, createConnection) }).Methods("POST")
+
+	myRouter.HandleFunc("/path", func(w http.ResponseWriter, r *http.Request) { pathFormHandler(w, r, driver) }).Methods("GET")
+	myRouter.HandleFunc("/path", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getPath) }).Methods("POST")
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -186,4 +239,9 @@ func main() {
 type Airport struct {
 	Name    string
 	Country string
+}
+
+type Connection struct {
+	Departure   string
+	Destination string
 }

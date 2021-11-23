@@ -1,0 +1,20 @@
+<html>
+    {{template "header.html"}}
+    <body>
+        <h1>Utwórz połączenie</h1>
+
+        <form action="/connection" method="POST">
+        <select type='number' name='departure'>
+            {{range $val := .}}
+                <option value='{{$val.Name}}'> {{$val.Name}} </option>
+            {{end}}
+        </select>
+        <select type='number' name='destination'>
+            {{range $val := .}}
+                <option value='{{$val.Name}}'> {{$val.Name}} </option>
+            {{end}}
+        </select>
+        <div><input type="submit" value="Save"></div>
+        </form>
+    </body>
+</html>
