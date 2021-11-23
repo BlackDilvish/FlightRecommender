@@ -1,16 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
-var templates = template.Must(template.ParseFiles("templates/edit.html",
+var templates = template.Must(template.ParseFiles("templates/airport_form.html",
 	"templates/view.html",
 	"templates/header.html"))
 
@@ -49,8 +52,8 @@ func getAirport(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, err
 	key := vars["name"]
 
 	cypher := `MATCH (a:Airport)
-			WHERE a.name = $airport_name
-			RETURN a.name AS name`
+               WHERE a.name = $airport_name
+               RETURN a.name AS name`
 
 	return tx.Run(cypher, map[string]interface{}{
 		"airport_name": key,
@@ -60,7 +63,7 @@ func getAirport(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, err
 func getAirports(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
 
 	cypher := `MATCH (a:Airport)
-			   RETURN a.name AS name`
+               RETURN a.name AS name`
 
 	return tx.Run(cypher, map[string]interface{}{})
 }
@@ -69,8 +72,8 @@ func getConnectedAirports(tx neo4j.Transaction, vars map[string]string) (neo4j.R
 	key := vars["name"]
 
 	cypher := `MATCH (a:Airport)-[r:HAS_CONNECTION]->(b:Airport)
-				WHERE a.name = $airport_name
-				RETURN b.name`
+               WHERE a.name = $airport_name
+               RETURN b.name`
 
 	return tx.Run(cypher, map[string]interface{}{
 		"airport_name": key,
@@ -82,16 +85,69 @@ func getPath(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error)
 	dest := vars["dest"]
 
 	cypher := `MATCH (a:Airport),
-					(b:Airport),
-					p = shortestPath((a)-[HAS_CONNECTION*]->(b))
-				Where a.name = $dept and b.name = $dest and length(p) > 0
-				UNWIND [n in nodes(p) | n.name] as name
-				RETURN name`
+               (b:Airport),
+               p = shortestPath((a)-[HAS_CONNECTION*]->(b))
+               Where a.name = $dept and b.name = $dest and length(p) > 0
+               UNWIND [n in nodes(p) | n.name] as name
+               RETURN name`
 
 	return tx.Run(cypher, map[string]interface{}{
 		"dept": dept,
 		"dest": dest,
 	})
+}
+
+func saveData(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, []byte) (neo4j.Result, error)) error {
+	session := driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		reqBody, _ := ioutil.ReadAll(r.Body)
+		result, err := createAirport(tx, reqBody)
+
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+
+		return nil, result.Err()
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createAirport(tx neo4j.Transaction, reqBody []byte) (neo4j.Result, error) {
+	var airport Airport
+	args := parseRequestBody(string(reqBody))
+	airport.Name = args["Name"]
+	airport.Country = args["Country"]
+
+	cypher := `CREATE (a:Airport { name: $name, country: $country })
+	           RETURN a.name`
+
+	return tx.Run(cypher, map[string]interface{}{
+		"name":    airport.Name,
+		"country": airport.Country,
+	})
+}
+
+func airportFormHandler(w http.ResponseWriter, r *http.Request) {
+	err := templates.ExecuteTemplate(w, "airport_form.html", "test")
+	if err != nil {
+		return
+	}
+}
+
+func parseRequestBody(body string) map[string]string {
+	m := make(map[string]string)
+	for _, obj := range strings.Split(body, "&") {
+		vars := strings.Split(obj, "=")
+		m[vars[0]] = vars[1]
+	}
+
+	return m
 }
 
 func handleRequests(driver neo4j.Driver) {
@@ -101,6 +157,9 @@ func handleRequests(driver neo4j.Driver) {
 	myRouter.HandleFunc("/airport/{name}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getAirport) })
 	myRouter.HandleFunc("/connections/{name}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getConnectedAirports) })
 	myRouter.HandleFunc("/path/{dept}/{dest}", func(w http.ResponseWriter, r *http.Request) { readData(w, r, driver, getPath) })
+
+	myRouter.HandleFunc("/create/airport", airportFormHandler)
+	myRouter.HandleFunc("/airport", func(w http.ResponseWriter, r *http.Request) { saveData(w, r, driver, createAirport) }).Methods("POST")
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -125,5 +184,6 @@ func main() {
 }
 
 type Airport struct {
-	Name string
+	Name    string
+	Country string
 }

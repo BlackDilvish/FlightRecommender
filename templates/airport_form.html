@@ -1,0 +1,12 @@
+<html>
+    {{template "header.html"}}
+    <body>
+        <h1>Formularz {{.}}</h1>
+
+        <form action="/airport" method="POST">
+        <div><input name="Name"></div>
+        <div><input name="Country"></div>
+        <div><input type="submit" value="Save"></div>
+        </form>
+    </body>
+</html>
