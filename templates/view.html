@@ -5,11 +5,32 @@
     </head>
     <body>
         {{template "navbar" .}}
-        <div>
-            {{range $val := .}}
-                <p>{{$val.Name}}</p>
+        {{if .}}
+        <table class="table">
+            <thead class="thead-light">
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Name</th>
+                <th scope="col">Country</th>
+                <th scope="col">Connections in</th>
+                <th scope="col">Connections out</th>
+              </tr>
+            </thead>
+            <tbody>
+            {{range $index, $val := .}}
+              <tr>
+                <th scope="row">{{$index}}</th>
+                <td>{{$val.Name}}</td>
+                <td>{{$val.Country}}</td>
+                <td><a href=/connections/in/{{$val.Name}}>link</a></td>
+                <td><a href=/connections/out/{{$val.Name}}>link</a></td>
+              </tr>
             {{end}}
-        </div>
+            </tbody>
+        </table>
+        {{else}}
+        No data
+        {{end}}
         {{template "footer" .}}
     </body>
     

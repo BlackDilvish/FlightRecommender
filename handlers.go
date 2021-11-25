@@ -9,7 +9,7 @@ func getAirport(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, err
 
 	cypher := `MATCH (a:Airport)
                WHERE a.name = $airport_name
-               RETURN a.name AS name`
+               RETURN a.name, a.country`
 
 	return tx.Run(cypher, map[string]interface{}{
 		"airport_name": key,
@@ -19,17 +19,29 @@ func getAirport(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, err
 func getAirports(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
 
 	cypher := `MATCH (a:Airport)
-               RETURN a.name AS name`
+               RETURN a.name, a.country`
 
 	return tx.Run(cypher, map[string]interface{}{})
 }
 
-func getConnectedAirports(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
+func getConnectedAirportsOut(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
 	key := vars["name"]
 
 	cypher := `MATCH (a:Airport)-[r:HAS_CONNECTION]->(b:Airport)
                WHERE a.name = $airport_name
-               RETURN b.name`
+               RETURN b.name, b.country`
+
+	return tx.Run(cypher, map[string]interface{}{
+		"airport_name": key,
+	})
+}
+
+func getConnectedAirportsIn(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
+	key := vars["name"]
+
+	cypher := `MATCH (a:Airport)-[r:HAS_CONNECTION]->(b:Airport)
+               WHERE b.name = $airport_name
+               RETURN a.name, a.country`
 
 	return tx.Run(cypher, map[string]interface{}{
 		"airport_name": key,
@@ -43,9 +55,9 @@ func getPath(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error)
 	cypher := `MATCH (a:Airport),
                (b:Airport),
                p = shortestPath((a)-[HAS_CONNECTION*]->(b))
-               Where a.name = $dept and b.name = $dest and length(p) > 0
-               UNWIND [n in nodes(p) | n.name] as name
-               RETURN name`
+               Where a.name = $dept and b.name = $dest and a.name <> b.name and length(p) > 0
+               UNWIND [n in nodes(p) | n] AS n
+               RETURN n.name, n.country`
 
 	return tx.Run(cypher, map[string]interface{}{
 		"dept": dept,
@@ -60,7 +72,7 @@ func createAirport(tx neo4j.Transaction, reqBody []byte) (neo4j.Result, error) {
 	airport.Country = args["Country"]
 
 	cypher := `CREATE (a:Airport { name: $name, country: $country })
-	           RETURN a.name`
+	           RETURN a.name, a.country`
 
 	return tx.Run(cypher, map[string]interface{}{
 		"name":    airport.Name,

@@ -49,7 +49,8 @@ func readData(r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, m
 		}
 		for result.Next() {
 			records = append(records, Airport{
-				Name: result.Record().Values[0].(string),
+				Name:    result.Record().Values[0].(string),
+				Country: result.Record().Values[1].(string),
 			})
 		}
 		return nil, result.Err()
