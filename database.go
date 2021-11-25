@@ -19,6 +19,16 @@ func readHandler(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn
 	}
 }
 
+func saveHandler(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, []byte) (neo4j.Result, error)) {
+	err := saveData(r, driver, fn)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/airports", http.StatusFound)
+}
+
 func readData(r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, map[string]string) (neo4j.Result, error)) []Airport {
 	var records []Airport
 
@@ -51,7 +61,7 @@ func readData(r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, m
 	return records
 }
 
-func saveData(w http.ResponseWriter, r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, []byte) (neo4j.Result, error)) error {
+func saveData(r *http.Request, driver neo4j.Driver, fn func(neo4j.Transaction, []byte) (neo4j.Result, error)) error {
 	session := driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {

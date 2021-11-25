@@ -18,10 +18,10 @@ func handleRequests(driver neo4j.Driver) {
 	myRouter.HandleFunc("/connections/{name}", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getConnectedAirports) })
 
 	myRouter.HandleFunc("/airport", airportFormHandler).Methods("GET")
-	myRouter.HandleFunc("/airport", func(w http.ResponseWriter, r *http.Request) { saveData(w, r, driver, createAirport) }).Methods("POST")
+	myRouter.HandleFunc("/airport", func(w http.ResponseWriter, r *http.Request) { saveHandler(w, r, driver, createAirport) }).Methods("POST")
 
 	myRouter.HandleFunc("/connection", func(w http.ResponseWriter, r *http.Request) { connectionFormHandler(w, r, driver) }).Methods("GET")
-	myRouter.HandleFunc("/connection", func(w http.ResponseWriter, r *http.Request) { saveData(w, r, driver, createConnection) }).Methods("POST")
+	myRouter.HandleFunc("/connection", func(w http.ResponseWriter, r *http.Request) { saveHandler(w, r, driver, createConnection) }).Methods("POST")
 
 	myRouter.HandleFunc("/path", func(w http.ResponseWriter, r *http.Request) { pathFormHandler(w, r, driver) }).Methods("GET")
 	myRouter.HandleFunc("/path", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getPath) }).Methods("POST")
