@@ -1,6 +1,10 @@
 <html>
-    {{template "header.html"}}
+    <head>
+        {{template "bootstrap-header" .}}
+        <title>Dodanie lotniska</title>
+    </head>
     <body>
+        {{template "navbar" .}}
         <h1>Formularz {{.}}</h1>
 
         <form action="/airport" method="POST">
@@ -8,5 +12,6 @@
         <div><input name="Country"></div>
         <div><input type="submit" value="Save"></div>
         </form>
+        {{template "footer" .}}
     </body>
 </html>

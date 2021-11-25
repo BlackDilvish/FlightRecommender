@@ -1,11 +1,16 @@
 <html>
-    {{template "header.html"}}
+    <head>
+        {{template "bootstrap-header" .}}
+        <title>Lista lotnisk</title>
+    </head>
     <body>
+        {{template "navbar" .}}
         <div>
             {{range $val := .}}
                 <p>{{$val.Name}}</p>
             {{end}}
         </div>
+        {{template "footer" .}}
     </body>
     
 </html>

@@ -1,6 +1,10 @@
 <html>
-    {{template "header.html"}}
+    <head>
+        {{template "bootstrap-header" .}}
+        <title>Dodanie połączenia</title>
+    </head>
     <body>
+        {{template "navbar" .}}
         <h1>Utwórz połączenie</h1>
 
         <form action="/connection" method="POST">
@@ -16,5 +20,6 @@
         </select>
         <div><input type="submit" value="Save"></div>
         </form>
+        {{template "footer" .}}
     </body>
 </html>

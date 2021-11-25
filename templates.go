@@ -8,8 +8,9 @@ import (
 )
 
 var templates = template.Must(template.ParseFiles("templates/airport_form.html",
+	"templates/home.html",
+	"templates/navbar.tmpl.html",
 	"templates/view.html",
-	"templates/header.html",
 	"templates/path_form.html",
 	"templates/connection_form.html"))
 
@@ -31,6 +32,13 @@ func pathFormHandler(w http.ResponseWriter, r *http.Request, driver neo4j.Driver
 func connectionFormHandler(w http.ResponseWriter, r *http.Request, driver neo4j.Driver) {
 	airports := readData(r, driver, getAirports)
 	err := templates.ExecuteTemplate(w, "connection_form.html", airports)
+	if err != nil {
+		return
+	}
+}
+
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	err := templates.ExecuteTemplate(w, "home.html", "test")
 	if err != nil {
 		return
 	}

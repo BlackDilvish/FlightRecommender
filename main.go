@@ -12,6 +12,7 @@ import (
 func handleRequests(driver neo4j.Driver) {
 	myRouter := mux.NewRouter().StrictSlash(true)
 
+	myRouter.HandleFunc("/", homeHandler)
 	myRouter.HandleFunc("/airports", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getAirports) })
 	myRouter.HandleFunc("/airport/{name}", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getAirport) })
 	myRouter.HandleFunc("/connections/{name}", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getConnectedAirports) })
