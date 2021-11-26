@@ -5,12 +5,15 @@
     </head>
     <body>
         {{template "navbar" .}}
-        <h1>Formularz {{.}}</h1>
-
-        <form action="/airport" method="POST">
-        <div><input name="Name"></div>
-        <div><input name="Country"></div>
-        <div><input type="submit" value="Save"></div>
+        <h2 class="text-center pt-5">Dodaj lotnisko</h2>
+        <form action="/airport" method="POST" style="margin: auto; width: 50%;">
+            <div class="form-group pt-3">
+              <input type="text" class="form-control" name="Name" placeholder="Nazwa lotniska">
+            </div>
+            <div class="form-group pt-3 pb-3">
+                <input type="text" class="form-control" name="Country" placeholder="Kraj lotniska">
+            </div>
+            <button type="submit" class="btn btn-primary">Dodaj</button>
         </form>
         {{template "footer" .}}
     </body>

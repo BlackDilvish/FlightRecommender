@@ -6,14 +6,14 @@
     <body>
         {{template "navbar" .}}
         {{if .}}
-        <table class="table">
+        <table class="table" style="margin: auto; width: 70%;">
             <thead class="thead-light">
               <tr>
                 <th scope="col">#</th>
-                <th scope="col">Name</th>
-                <th scope="col">Country</th>
-                <th scope="col">Connections in</th>
-                <th scope="col">Connections out</th>
+                <th scope="col">Nazwa</th>
+                <th scope="col">Kraj</th>
+                <th scope="col">Połączenia przychodzące</th>
+                <th scope="col">Połączenia wychodzące</th>
               </tr>
             </thead>
             <tbody>
@@ -29,7 +29,7 @@
             </tbody>
         </table>
         {{else}}
-        No data
+        <h2 class="text-center pt-5">Brak dostępnych połączeń</h2>
         {{end}}
         {{template "footer" .}}
     </body>

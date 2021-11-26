@@ -5,21 +5,26 @@
     </head>
     <body>
         {{template "navbar" .}}
-        <h1>Utwórz połączenie</h1>
-
-        <form action="/connection" method="POST">
-        <select type='number' name='departure'>
-            {{range $val := .}}
-                <option value='{{$val.Name}}'> {{$val.Name}} </option>
-            {{end}}
-        </select>
-        <select type='number' name='destination'>
-            {{range $val := .}}
-                <option value='{{$val.Name}}'> {{$val.Name}} </option>
-            {{end}}
-        </select>
-        <div><input type="submit" value="Save"></div>
-        </form>
+        <h2 class="text-center pt-5">Dodaj połączenie</h2>
+        <form action="/connection" method="POST" style="margin: auto; width: 50%;">
+            <div class="dep-box">
+                <label for="dep">Lotnosko początkowe:</label>
+                <select id="dep" class="form-select form-select-lg mb-3" aria-label=".form-select-lg example" name='departure'>
+                    {{range $val := .}}
+                        <option value='{{$val.Name}}'> {{$val.Name}} </option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="des-box">
+                <label for="des">Lotnosko końcowe:</label>
+                <select id="des" class="form-select form-select-lg mb-3" aria-label=".form-select-lg example" name='destination'>
+                    {{range $val := .}}
+                        <option value='{{$val.Name}}'> {{$val.Name}} </option>
+                    {{end}}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Szukaj</button>
+            </form>
         {{template "footer" .}}
     </body>
 </html>
