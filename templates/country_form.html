@@ -1,0 +1,22 @@
+<html>
+    <head>
+        {{template "bootstrap-header" .}}
+        <title>Znajdź lotnosko w kraju</title>
+    </head>
+    <body>
+        {{template "navbar" .}}
+        <h2 class="text-center pt-5">Wyszukaj lotniska w kraju</h2>
+        <form action="/country" method="POST" style="margin: auto; width: 50%;">
+            <div class="dep-box">
+                <label for="dep">Kraj</label>
+                <select id="dep" class="form-select form-select-lg mb-3" aria-label=".form-select-lg example" name='country'>
+                    {{range $val := .}}
+                        <option value='{{$val.Country}}'> {{$val.Country}} </option>
+                    {{end}}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Dodaj</button>
+        </form>
+        {{template "footer" .}}
+    </body>
+</html>

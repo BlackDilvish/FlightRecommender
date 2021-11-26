@@ -8,7 +8,7 @@
         <h2 class="text-center pt-5">Wyszukaj najlepsze połączenie</h2>
         <form action="/path" method="POST" style="margin: auto; width: 50%;">
             <div class="dep-box">
-                <label for="dep">Lotnosko początkowe:</label>
+                <label for="dep">Lotnisko początkowe:</label>
                 <select id="dep" class="form-select form-select-lg mb-3" aria-label=".form-select-lg example" name='departure'>
                     {{range $val := .}}
                         <option value='{{$val.Name}}'> {{$val.Name}} </option>
@@ -16,7 +16,7 @@
                 </select>
             </div>
             <div class="des-box">
-                <label for="des">Lotnosko końcowe:</label>
+                <label for="des">Lotnisko końcowe:</label>
                 <select id="des" class="form-select form-select-lg mb-3" aria-label=".form-select-lg example" name='destination'>
                     {{range $val := .}}
                         <option value='{{$val.Name}}'> {{$val.Name}} </option>

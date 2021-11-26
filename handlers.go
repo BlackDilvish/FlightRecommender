@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
@@ -17,9 +19,28 @@ func getAirport(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, err
 }
 
 func getAirports(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
-
 	cypher := `MATCH (a:Airport)
                RETURN a.name, a.country`
+
+	return tx.Run(cypher, map[string]interface{}{})
+}
+
+func getAirportsByCountry(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
+	key := strings.ReplaceAll(vars["country"], "%2B", "+")
+
+	cypher := `MATCH (a:Airport)
+               WHERE a.country = $airport_country
+               RETURN a.name, a.country`
+
+	return tx.Run(cypher, map[string]interface{}{
+		"airport_country": key,
+	})
+}
+
+func getCountries(tx neo4j.Transaction, vars map[string]string) (neo4j.Result, error) {
+	cypher := `MATCH (a:Airport)
+               WITH DISTINCT a.country AS country
+               RETURN "null", country`
 
 	return tx.Run(cypher, map[string]interface{}{})
 }

@@ -27,6 +27,9 @@ func handleRequests(driver neo4j.Driver) {
 	myRouter.HandleFunc("/path", func(w http.ResponseWriter, r *http.Request) { pathFormHandler(w, r, driver) }).Methods("GET")
 	myRouter.HandleFunc("/path", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getPath) }).Methods("POST")
 
+	myRouter.HandleFunc("/country", func(w http.ResponseWriter, r *http.Request) { countryFormHandler(w, r, driver) }).Methods("GET")
+	myRouter.HandleFunc("/country", func(w http.ResponseWriter, r *http.Request) { readHandler(w, r, driver, getAirportsByCountry) }).Methods("POST")
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
