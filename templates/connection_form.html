@@ -5,7 +5,7 @@
     </head>
     <body>
         {{template "navbar" .}}
-        <h2 class="text-center pt-5">Dodaj połączenie</h2>
+        <h2 class="text-center pt-5">Dodaj nowe połączenie</h2>
         <form action="/connection" method="POST" style="margin: auto; width: 50%;">
             <div class="dep-box">
                 <label for="dep">Lotnisko początkowe:</label>
@@ -23,7 +23,7 @@
                     {{end}}
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary">Szukaj</button>
+            <button type="submit" class="btn btn-primary">Dodaj</button>
             </form>
         {{template "footer" .}}
     </body>
