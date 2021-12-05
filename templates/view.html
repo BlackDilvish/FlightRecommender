@@ -6,7 +6,8 @@
     <body style="margin-bottom: 40px;">
         {{template "navbar" .}}
         {{if .}}
-        <table class="table" style="margin: auto; width: 70%;">
+        <div style="margin: auto; width: 70%;">
+          <table class="table table-hover table-fixed">
             <thead class="thead-light">
               <tr>
                 <th scope="col">#</th>
@@ -27,7 +28,8 @@
               </tr>
             {{end}}
             </tbody>
-        </table>
+          </table>
+        </div>
         {{else}}
         <h2 class="text-center pt-5">Brak dostępnych połączeń</h2>
         {{end}}
